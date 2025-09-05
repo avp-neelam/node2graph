@@ -96,7 +96,7 @@ def main():
     p.add_argument('--no_cache', action='store_true')
     p.add_argument('--no_class_balance', action='store_true')
     p.add_argument('--csv', type=str, default=None)
-    p.add_argument('--print_epoch', type=bool, default=False)
+    p.add_argument('--print_epoch', action='store_true')
     args = p.parse_args()
 
     ks = [int(x) for x in str(args.k).split(',')]

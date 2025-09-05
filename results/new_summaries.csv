@@ -1,0 +1,4 @@
+dataset,ks,model,fusion,num_seeds,mean_test_acc,std_test_acc
+texas,1,sage,concat,5,0.4211,0.0686
+texas,2,sage,concat,5,0.3632,0.0632
+texas,3,sage,concat,5,0.3579,0.0737

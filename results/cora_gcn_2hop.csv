@@ -1,0 +1,3 @@
+dataset,ks,fusion,model,seed,val_acc,test_acc
+cora,2,concat,gcn,42,0.7440,0.7520
+cora,2,concat,gcn,42,0.7440,0.7520
