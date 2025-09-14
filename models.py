@@ -3,7 +3,7 @@ import torch
 
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import TransformerConv, GCNConv, SAGEConv, GATConv, global_add_pool, global_mean_pool
+from torch_geometric.nn import TransformerConv, GCNConv, SAGEConv, GATConv, GPSConv, global_add_pool, global_mean_pool
 from torch_geometric.data import Batch
 
 # -----------------------------
@@ -97,8 +97,40 @@ class GATEncoder(nn.Module):
             x = F.dropout(x, p=self.dropout, training=self.training)
         return self.pool(x, batch)
 
+class GPSEncoder(nn.Module):
+    def __init__(self, in_channels:int, hidden_dim:int, num_layers:int=3, heads:int=4, dropout:float=0.5, pool:str='mean'):
+        super().__init__()
+        # Project to the working channel size expected by GPSConv
+        self.in_proj = nn.Identity() if in_channels == hidden_dim else nn.Linear(in_channels, hidden_dim)
+        self.convs = nn.ModuleList()
+        self.norms = nn.ModuleList()
+
+        # Pool selection consistent with other encoders
+        self.pool = global_mean_pool if pool == 'mean' else global_add_pool
+
+        # Build GPSConv stack; GPSConv expects fixed channel size per layer
+        # Use a simple SAGEConv as the local MPNN inside each GPS block (lightweight and robust for heterophily)
+        for _ in range(max(1, num_layers)):
+            local_mpnn = SAGEConv(hidden_dim, hidden_dim)
+            self.convs.append(GPSConv(channels=hidden_dim, conv=local_mpnn, heads=heads, dropout=dropout))
+            self.norms.append(nn.BatchNorm1d(hidden_dim))
+
+        self.dropout = dropout
+        self.out_dim = hidden_dim
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, batch: torch.Tensor, edge_attr: Optional[torch.Tensor]=None):
+        x = self.in_proj(x)
+        for conv, norm in zip(self.convs, self.norms):
+            # GPSConv supports (x, edge_index, batch)
+            out = conv(x, edge_index, batch=batch)
+            out = norm(out)
+            out = F.relu(out)
+            out = F.dropout(out, p=self.dropout, training=self.training)
+            x = x + out  # residual
+        return self.pool(x, batch)
+
 # -----------------------------------------
-# Fusion & Heads -- mostly ignored for now
+# Fusion & Heads -- ignored for now
 # -----------------------------------------
 class AttentionFusion(nn.Module):
     def __init__(self, dim:int, K:int):
@@ -162,4 +194,6 @@ def build_encoder(name:str, in_dim:int, hidden:int, layers:int, heads:int, dropo
         return SAGEEncoder(in_dim, hidden, num_layers=max(2, layers), dropout=dropout)
     if name in {'gat'}:
         return GATEncoder(in_dim, hidden, num_layers=max(2, layers), heads=heads, dropout=dropout)
+    if name in {'gps'}:
+        return GPSEncoder(in_dim, hidden, num_layers=max(2, layers), heads=heads, dropout=dropout)
     raise ValueError(f"Unknown encoder name: {name}")

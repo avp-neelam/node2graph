@@ -9,6 +9,7 @@ from torch_geometric.data import Data
 from torch_geometric.utils import k_hop_subgraph
 
 from util import *
+from features import augment_subgraph
 
 # -----------------------------------------
 # Node→Graph dataset builder (with caching)
@@ -35,7 +36,7 @@ def bfs_distances(edge_index:torch.Tensor, num_nodes:int, root:int) -> torch.Ten
     return torch.tensor(dist, dtype=torch.float)
 
 # Build k-hop ego subgraph around node_idx
-def build_subgraph(data:Data, node_idx:int, k:int, add_pos_feats:bool=False) -> Data:
+def build_subgraph(data:Data, node_idx:int, k:int, add_pos_feats:bool=False, add_struct_feats:bool=False) -> Data:
     subset, edge_index, center_map, edge_mask = k_hop_subgraph(
         node_idx, num_hops=k, edge_index=data.edge_index, relabel_nodes=True, num_nodes=data.num_nodes, flow='source_to_target'
     )
@@ -66,20 +67,26 @@ def build_subgraph(data:Data, node_idx:int, k:int, add_pos_feats:bool=False) -> 
     g.root_nid = int(node_idx)
     g.k = int(k)
     g.num_nodes_orig = int(data.num_nodes)
+
+    # Add Topological/Spectral features if flagged
+    if add_struct_feats:
+        g = augment_subgraph(g, max_eigs=10, do_centroid=True)
+
     return g
 
 
-def cache_path(root:str, dataset:str, split:str, k:int, seed:int, add_pos_feats:bool=False) -> str:
+def cache_path(root:str, dataset:str, split:str, k:int, seed:int, add_pos_feats:bool=False, add_struct_feats:bool=False) -> str:
     flag = 'pos2' if add_pos_feats else 'nopo'
+    flag2 = 'struct' if add_struct_feats else 'nostruct'
     dname = canonical_name(dataset)
-    return os.path.join(root, 'cache', dname, f'seed{seed}', f'{split}_k{k}_{flag}.pt')
+    return os.path.join(root, 'cache', dname, f'seed{seed}', f'{split}_k{k}_{flag}_{flag2}.pt')
 
 
-def materialize_subgraphs(data:Data, k:int, mask:torch.Tensor, cache_file:Optional[str], add_pos_feats:bool=False) -> List[Data]:
+def materialize_subgraphs(data:Data, k:int, mask:torch.Tensor, cache_file:Optional[str], add_pos_feats:bool=False, add_struct_feats:bool=False) -> List[Data]:
     if cache_file and os.path.exists(cache_file):
         return torch.load(cache_file, weights_only=False)
     node_indices = torch.arange(data.num_nodes)[mask]
-    graphs = [build_subgraph(data, int(nid), k=k, add_pos_feats=add_pos_feats) for nid in node_indices.tolist()]
+    graphs = [build_subgraph(data, int(nid), k=k, add_pos_feats=add_pos_feats, add_struct_feats=add_struct_feats) for nid in node_indices.tolist()]
     if cache_file:
         os.makedirs(os.path.dirname(cache_file), exist_ok=True)
         torch.save(graphs, cache_file)

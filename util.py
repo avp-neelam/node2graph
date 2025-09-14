@@ -24,6 +24,9 @@ def canonical_name(name:str) -> str:
         'texas': 'texas',
         'cornell': 'cornell',
         'wisconsin': 'wisconsin',
+        'actor': 'actor',
+        'roman': 'roman-empire',
+        'roman-empire': 'roman-empire',
     }
     if name not in aliases:
         raise ValueError(f"Unknown dataset alias: {name}")

@@ -13,7 +13,7 @@ Repo contains files to run experiments for task transferability between node cla
 ---
 Update the default path for `--root` in `node2graph.py` and `run_all.py` to the path of your datasets
 
-Supported datasets are Cora, Citeseer, Pubmed, Texas, Wisconsin, Cornell, Chameleon[^1]
+Supported datasets are Cora, Citeseer, Pubmed, Texas, Wisconsin, Cornell, Chameleon, Actor, Roman-Empire
 
 Supported models are GCN, GraphSAGE, GAT
 
@@ -28,4 +28,3 @@ Example usage, multi-seed run (saves model performance to `results/summaries.csv
 ```
 python run_all.py --dataset texas --model sage --ksets 1 2 3 --csv results/texas_runs.csv
 ```
-[^1]: Need to filter this data?

@@ -53,7 +53,7 @@ def train_eval(model, train_loader, val_loader, test_loader, device, epochs=200,
                 loss = F.cross_entropy(logits, y_target)
                 if train:
                     opt.zero_grad(); loss.backward(); opt.step()
-                L += float(loss) * logits.size(0)
+                L += float(loss.item()) * logits.size(0)
                 C += int((logits.argmax(-1) == y_target).sum())
                 N += logits.size(0)
         return L/max(N,1), C/max(N,1)

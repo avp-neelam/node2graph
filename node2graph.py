@@ -15,7 +15,7 @@ from train import *
 
 def run_experiment(dataset:str, ks:List[int], fusion:str, model_name:str, root:str='./data', epochs:int=200, batch_size:int=128, 
                    hidden_dim:int=64, layers:int=4, heads:int=4, dropout:float=0.5, lr:float=1e-3, weight_decay:float=5e-4, 
-                   seed:int=42, add_pos_feats:bool=False, class_balance:bool=True, cache:bool=True, 
+                   seed:int=42, add_pos_feats:bool=False, add_struct_feats:bool=False, class_balance:bool=True, cache:bool=True, 
                    csv_log_path:Optional[str]=None, device:Optional[str]=None, print_epoch:Optional[bool]=False) -> Tuple[float,float]:
     set_seed(seed)
     device = torch.device(device or ('cuda' if torch.cuda.is_available() else 'cpu'))
@@ -33,8 +33,8 @@ def run_experiment(dataset:str, ks:List[int], fusion:str, model_name:str, root:s
     graphs_by_split_by_k = { split: [] for split in split_masks }
     for k in ks:
         for split, mask in split_masks.items():
-            cfile = cache_path(root, dataset, split, k, seed, add_pos_feats) if cache else None
-            graphs = materialize_subgraphs(data, k, mask, cfile, add_pos_feats)
+            cfile = cache_path(root, dataset, split, k, seed, add_pos_feats, add_struct_feats) if cache else None
+            graphs = materialize_subgraphs(data, k, mask, cfile, add_pos_feats, add_struct_feats)
             graphs_by_split_by_k[split].append(graphs)
 
     # Datasets & loaders
@@ -93,6 +93,7 @@ def main():
     p.add_argument('--weight_decay', type=float, default=5e-4)
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--no_pos_feats', action='store_true')
+    p.add_argument('--no_struct_feats', action='store_true')
     p.add_argument('--no_cache', action='store_true')
     p.add_argument('--no_class_balance', action='store_true')
     p.add_argument('--csv', type=str, default=None)
@@ -115,7 +116,8 @@ def main():
         lr=args.lr,
         weight_decay=args.weight_decay,
         seed=args.seed,
-        add_pos_feats=not args.no_pos_feats,
+        add_pos_feats=False,
+        add_struct_feats=False,
         class_balance=not args.no_class_balance,
         cache=not args.no_cache,
         csv_log_path=args.csv,
